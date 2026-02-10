@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Surgery Pack Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+body{
+  margin:0;
+  font-family:system-ui,Arial;
+  background:linear-gradient(160deg,#0b132b,#1c2541);
+  color:#e5e7eb;
+}
+
+.wrap{
+  max-width:900px;
+  margin:auto;
+  padding:16px;
+}
+
+h1{
+  text-align:center;
+  margin-bottom:4px;
+}
+
+.watermark{
+  text-align:center;
+  font-size:12px;
+  opacity:.5;
+  margin-bottom:14px;
+}
+
+.card{
+  background:#111827;
+  border-radius:12px;
+  padding:14px;
+  border:1px solid #24314f;
+  margin-bottom:14px;
+}
+
+.inputs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+label{font-size:13px;}
+
+input{
+  width:100%;
+  margin-top:4px;
+  padding:8px;
+  border-radius:8px;
+  border:1px solid #24314f;
+  background:#0f172a;
+  color:white;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+
+th,td{
+  padding:8px;
+  border-bottom:1px solid #24314f;
+  text-align:center;
+}
+
+th{
+  color:#93c5fd;
+}
+
+td:first-child,th:first-child{
+  text-align:left;
+}
+
+.rate{
+  width:70px;
+  padding:6px;
+  border-radius:6px;
+  border:1px solid #24314f;
+  background:#0f172a;
+  color:white;
+  text-align:center;
+}
+
+.summary{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+}
+
+.box{
+  padding:12px;
+  border-radius:10px;
+  text-align:center;
+  background:#0f172a;
+  border:1px solid #24314f;
+}
+
+.big{
+  font-size:18px;
+  font-weight:700;
+  margin-top:4px;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<h1>Surgery Pack Calculator</h1>
+<div class="watermark">Made by Silentcy</div>
+
+<div class="card inputs">
+  <div>
+    <label>Jumlah Pack</label>
+    <input type="number" id="packInput" value="1" min="0">
+  </div>
+  <div>
+    <label>Harga Pack (WL each)</label>
+    <input type="number" id="packPriceInput" value="125" min="0">
+  </div>
+</div>
+
+<div class="card">
+<table>
+<thead>
+<tr>
+  <th>Item</th>
+  <th>Jumlah</th>
+  <th>Rate</th>
+  <th>WL</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+
+<div class="summary">
+  <div class="box">
+    Collect
+    <div class="big" id="collectText">0 WL</div>
+  </div>
+  <div class="box">
+    Modal
+    <div class="big" id="modalText">0 WL</div>
+  </div>
+  <div class="box">
+    Profit
+    <div class="big" id="profitText">0 WL</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const items = [
+  { name:"Surgical Anesthetic",    perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Antibiotic",    perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Antiseptic",    perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Clamp",         perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Defibrillator", perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Lab Kit",       perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Pins",          perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Scalpel",       perPack:20, type:"tool",     rate:3 },
+  { name:"Surgical Splint",        perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Sponge",        perPack:20, type:"tool",     rate:3 },
+  { name:"Surgical Transfusion",   perPack:20, type:"tool",     rate:4 },
+  { name:"Surgical Ultrasound",    perPack:20, type:"tool",     rate:4 },
+
+  { name:"Surgical Stitches (200 / WL)", perPack:20, type:"stitches", rate:1 },
+  { name:"Surg-E (WL each)",             perPack:5,  type:"surge",    rate:3.7 }
+];
+
+const tbody = document.getElementById("tableBody");
+
+items.forEach((item,i)=>{
+  const tr = document.createElement("tr");
+  tr.innerHTML = `
+    <td>${item.name}</td>
+    <td id="qty_${i}">0</td>
+    <td><input class="rate" id="rate_${i}" type="number" step="0.01" value="${item.rate}"></td>
+    <td id="wl_${i}">0 WL</td>
+  `;
+  tbody.appendChild(tr);
+});
+
+const packInput = document.getElementById("packInput");
+const packPriceInput = document.getElementById("packPriceInput");
+
+function formatWL(wl){
+  wl = Math.round(wl);
+  let sign = wl < 0 ? "-" : "";
+  wl = Math.abs(wl);
+
+  let dl = Math.floor(wl / 100);
+  let rest = wl % 100;
+
+  if(dl > 0) return sign + dl + " DL " + rest + " WL";
+  return sign + rest + " WL";
+}
+
+function calculate(){
+
+  const pack = Number(packInput.value) || 0;
+  const packPrice = Number(packPriceInput.value) || 0;
+
+  let totalWL = 0;
+
+  items.forEach((item,i)=>{
+
+    const qty = item.perPack * pack;
+    document.getElementById("qty_"+i).textContent = qty;
+
+    const rate = Number(document.getElementById("rate_"+i).value) || 0;
+
+    let wl = 0;
+
+    if(rate > 0){
+      if(item.type === "tool"){
+        // rate = item per WL
+        wl = qty / rate;
+      }
+      else if(item.type === "stitches"){
+        // 200 stitches per WL
+        wl = qty / 200 * rate;
+      }
+      else if(item.type === "surge"){
+        // WL each
+        wl = qty * rate;
+      }
+    }
+
+    document.getElementById("wl_"+i).textContent = formatWL(wl);
+    totalWL += wl;
+  });
+
+  const modal = pack * packPrice;
+  const profit = totalWL - modal;
+
+  document.getElementById("collectText").textContent = formatWL(totalWL);
+  document.getElementById("modalText").textContent   = formatWL(modal);
+  document.getElementById("profitText").textContent  = formatWL(profit);
+}
+
+document.querySelectorAll("input").forEach(inp=>{
+  inp.addEventListener("input",calculate);
+});
+
+calculate();
+</script>
+
+</body>
+</html>
